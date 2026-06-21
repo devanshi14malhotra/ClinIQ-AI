@@ -1,5 +1,4 @@
-# Model artifacts - regenerate via vectorizer.py / retrieval.py
-data/*.pkl
+
 
 # Raw dataset - large, redundant once preprocessed CSV exists
 data/medquad.csv
