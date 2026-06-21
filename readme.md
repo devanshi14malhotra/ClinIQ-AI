@@ -2,13 +2,7 @@
 
 Explainable, retrieval-based medical question answering chatbot built on NIH-sourced data.
 
-## Overview
-
-Access to reliable medical information remains a challenge for the general public, often leading to misinformation or over-reliance on unverified sources. Existing medical chatbots either lack transparency in how they retrieve answers or depend on generative models prone to hallucination. ClinIQ AI addresses this by providing a retrieval-based conversational QA system trained on NIH-sourced medical data, that not only answers symptom, treatment, and general health queries but also exposes the reasoning behind each response through keyword-level explainability and confidence scoring.
-
-ClinIQ AI does not generate answers. It retrieves the closest matching answer from a verified dataset of medical QA pairs sourced from NIH websites. This design choice removes the risk of hallucination present in generative chatbots, at the cost of being limited to topics the dataset actually covers.
-
-This is not a diagnostic tool and is not a substitute for professional medical advice.
+Rather than generating answers, it retrieves the closest matching answer from a verified dataset, removing the risk of hallucination common in generative chatbots, while exposing the reasoning behind each response through keyword-level explainability and confidence scoring. It is not a diagnostic tool and is not a substitute for professional medical advice.
 
 ## Features
 
@@ -28,15 +22,6 @@ This is not a diagnostic tool and is not a substitute for professional medical a
 5. If the best match falls below a similarity threshold, the system returns a no-match response instead of a low-confidence guess
 6. If a confident match is found, matched keywords are identified and highlighted in the returned answer, alongside a confidence label and any alternative matches
 
-## Dataset
-
-MedQuAD (Medical Question Answering Dataset), created by Asma Ben Abacha and Dina Demner-Fushman at the US National Library of Medicine, NIH. Originally 47,457 QA pairs collected from 12 NIH websites, covering 37 question types associated with diseases, drugs, and other medical entities.
-
-Citation: Ben Abacha, A., & Demner-Fushman, D. (2019). A Question-Entailment Approach to Question Answering. BMC Bioinformatics, 20(1), 511.
-
-License: CC BY 4.0
-
-After preprocessing (deduplication, null removal, short-answer filtering), the working dataset used in this project contains approximately 14,300 QA pairs.
 
 ## Tech stack
 
