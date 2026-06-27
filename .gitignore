@@ -28,3 +28,7 @@ Thumbs.db
 # Editor
 .vscode/
 .idea/
+
+#EXTRA FILES
+parse_nb.py
+parsed_nb.txt

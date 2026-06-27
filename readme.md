@@ -1,66 +1,76 @@
 # ClinIQ AI
 
-Explainable, retrieval-based medical question answering chatbot built on NIH-sourced data.
-
-Rather than generating answers, it retrieves the closest matching answer from a verified dataset, removing the risk of hallucination common in generative chatbots, while exposing the reasoning behind each response through keyword-level explainability and confidence scoring. It is not a diagnostic tool and is not a substitute for professional medical advice.
+Explainable, retrieval-based medical question answering chatbot built on NIH-sourced data. Retrieves answers from a verified dataset instead of generating them, eliminating hallucination risk. Not a diagnostic tool. For informational purposes only.
 
 ## Features
 
-- Retrieval-based question answering over 14,000+ medical QA pairs sourced from NIH websites (cancer.gov, NIDDK, NINDS, GARD, MedlinePlus, and others)
-- Intent classification of user queries into symptom, treatment, or general information categories
-- Explainability layer showing which keywords drove a match, with the matched terms highlighted directly in the returned answer
-- Confidence scoring based on cosine similarity, with a no-match threshold so the system declines to answer rather than return an unreliable result
-- Alternative match suggestions when more than one relevant answer exists in the dataset
-- Streamlit web interface
+- 14,000+ medical QA pairs from NIH (cancer.gov, NIDDK, NINDS, GARD, MedlinePlus, and others)
+- Dense semantic retrieval using sentence-transformers and FAISS, capturing meaning beyond exact keyword overlap
+- Intent classification across 5 categories: symptom, treatment, cause, prevention, and general information
+- LIME-based explainability on the intent classifier, providing word-level attribution weights for each prediction
+- Confidence threshold of 0.45 so the system returns a no-match response instead of a low-confidence answer
+- Answers displayed with punctuation and sentence structure preserved
 
 ## How it works
 
-1. User submits a question through the Streamlit interface
-2. The query is cleaned, tokenized, and lemmatized using the same pipeline applied to the dataset during preprocessing
-3. An intent classifier (Logistic Regression trained on TF-IDF features) labels the query as a symptom query, treatment query, or general information query
-4. The processed query is vectorized using TF-IDF and compared against all question vectors in the dataset using cosine similarity
-5. If the best match falls below a similarity threshold, the system returns a no-match response instead of a low-confidence guess
-6. If a confident match is found, matched keywords are identified and highlighted in the returned answer, alongside a confidence label and any alternative matches
-
+1. The query is classified by intent using a Logistic Regression model trained on TF-IDF features
+2. LIME generates perturbed versions of the query, measures how the prediction changes across each, and produces per-word attribution weights explaining the intent decision
+3. The query is encoded into a 384-dimensional dense vector using `all-MiniLM-L6-v2`
+4. FAISS performs cosine similarity search over 14,301 pre-indexed question embeddings
+5. If the best match score falls below 0.45, a no-match response is returned. Otherwise the answer is returned with a confidence label, LIME explanation, and alternative matches.
 
 ## Tech stack
 
 | Component | Tool |
 |---|---|
-| Preprocessing | pandas, NLTK, regex |
-| Feature engineering | scikit-learn (TF-IDF) |
-| Intent classification | scikit-learn (Logistic Regression, compared against Naive Bayes and Linear SVM) |
-| Retrieval | Cosine similarity over TF-IDF vectors (scikit-learn) |
-| Explainability | TF-IDF weighted keyword overlap, confidence banding |
+| Intent classification | Logistic Regression + TF-IDF (scikit-learn) |
+| Explainability | LIME (LimeTextExplainer) |
+| Semantic retrieval | sentence-transformers (all-MiniLM-L6-v2) + FAISS |
 | Interface | Streamlit |
-| Model persistence | joblib |
+| Model persistence | joblib, numpy |
 
+## v1 vs v2 retrieval comparison
 
+| Query | v1 TF-IDF | v2 Dense |
+|---|---|---|
+| hypertension risks | What is Portal hypertension? (wrong) | Who is at risk for High Blood Pressure? (correct) |
+| renal failure causes | What causes Heart Failure? (wrong) | What causes Kidney Failure? (correct) |
+| how do I manage high blood sugar | What is High Blood Pressure? (wrong) | How to prevent Diabetes? (correct) |
+| what drugs are used for asthma | What is Asthma? (partial) | What are the treatments for Asthma? (correct) |
+| what is the best pizza topping | returned a low-confidence match (wrong) | correctly returned no-match |
+
+v1 fails on vocabulary mismatch because TF-IDF relies on exact token overlap. "hypertension" and "high blood pressure" share no tokens so v1 scores them as unrelated. v2 encodes meaning so synonyms and paraphrases match correctly.
+
+## Notebooks
+
+`development.ipynb` covers the v1 build: data cleaning, TF-IDF vectorization, intent classifier training, and keyword-overlap explainability.
+
+`expansion.ipynb` covers the v2 upgrades: improved intent labeling across 5 classes, classifier retraining on raw question text for LIME compatibility, dense embedding generation, FAISS index construction, LIME explainability, answer display fix, and a side-by-side comparison of v1 vs v2 retrieval across 10 test queries.
 
 ## Setup
 
 ```bash
 pip install -r requirements.txt
+```
+
+Run `expansion.ipynb` top to bottom first to generate the v2 model files in `data/`.
+
+```bash
 streamlit run app.py
 ```
 
-Run from the project root, not from inside `src/`.
-
 ## Evaluation
 
-Intent classifier (Logistic Regression), evaluated on a held-out 20% test split:
+Intent classifier (v2): 99% accuracy, weighted F1 0.99, evaluated on a held-out 20% test split across 5 classes.
 
-- Accuracy: 99%
-- Weighted F1: 0.99
-- 5-fold cross-validation mean F1: 0.99 (std dev 0.002)
-
-Note on the intent classifier: training labels were generated using rule-based keyword matching (presence of words like "symptom" or "treat" in the question). The classifier is trained on the same text used to create these labels, so the high accuracy reflects how well the model learns to detect those keyword patterns rather than a deeper semantic understanding of intent. This is documented for transparency.
-
-Retrieval is evaluated qualitatively via similarity scores and a tuned no-match threshold (0.45), which was set by testing the system against both in-domain and out-of-domain queries.
+Note: intent labels were generated using rule-based keyword matching. The high accuracy reflects how well the model learns those keyword patterns rather than deeper semantic intent understanding. This is documented for transparency.
 
 ## Known limitations
 
-- Retrieval is restricted to terms present in the dataset's vocabulary. Queries containing terms absent from MedQuAD (for example, certain disease names not covered by the 12 source NIH sites) will not retrieve relevant results, even if the similarity score appears high. This is a known limitation of TF-IDF based retrieval and is mitigated, but not fully solved, by the no-match threshold.
-- The system answers only what exists in the dataset. It cannot synthesize information across multiple entries or reason beyond retrieval.
-- Intent classification reflects keyword presence rather than deep semantic intent (see Evaluation section above).
+- Retrieval is restricted to topics covered by MedQuAD's 12 NIH source sites. Queries on conditions not present in the dataset may not retrieve relevant results even at high similarity scores.
+- The system cannot synthesize information across multiple dataset entries or reason beyond retrieval.
+- LIME attribution weights vary slightly across runs due to random perturbation sampling.
 
+## Live demo
+
+[cliniq-ai-dm.streamlit.app](https://cliniq-ai-dm.streamlit.app/)
