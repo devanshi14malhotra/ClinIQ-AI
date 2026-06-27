@@ -4,3 +4,6 @@ numpy
 scikit-learn
 nltk
 joblib
+sentence-transformers
+faiss-cpu
+lime
