@@ -7,3 +7,5 @@ joblib
 sentence-transformers
 faiss-cpu
 lime
+matplotlib
+seaborn
